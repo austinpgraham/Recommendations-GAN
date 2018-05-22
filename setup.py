@@ -3,7 +3,7 @@
 from setuptools import setup
 from setuptools import find_packages
 
-setup(name='kernel',
+setup(name='ganrecs',
       version='1.0',
       description='Experiments for GAN-Based Recommendations',
       author=[
@@ -19,6 +19,7 @@ setup(name='kernel',
       package_dir={'': 'src'},
       entry_points = {
           'console_scripts': [
+              'ganrecs_mnist_test=ganrecs.scripts.ganrecs_mnist:main'
           ]
       }
 )
