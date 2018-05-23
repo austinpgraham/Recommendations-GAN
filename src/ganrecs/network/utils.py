@@ -17,4 +17,4 @@ class NetworkLayer():
 
     def __init__(self, _in, _out):
         self.W = tf.Variable(xavier([_in, _out]))
-        self.b = tf.Variable(tf.zeroes(shape=[_out]))
+        self.b = tf.Variable(tf.zeros(shape=[_out]))
