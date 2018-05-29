@@ -5,6 +5,7 @@
 # correctly
 # Original code: https://github.com/wiseodd/generative-models
 import os
+import argparse
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -40,37 +41,57 @@ def get_one_hot(value):
     zeros[value] = 1
     return zeros
 
-def main():
+def process_args(args=None):
+    parser = argparse.ArgumentParser(description="Test with MNIST data set")
+    parser.add_argument('-l', '--location', help='Saved model location')
+    args = parser.parse_args(args)
+    location = os.path.expanduser(args.location)
+
+    if not os.path.exists(location):
+        os.makedirs(location)
+
+    return location
+
+def main(args=None):
+    location = process_args(args)
+    model_path = os.path.join(location, "model.ckpt")
+
     print("Constructing network...")
     dis_arch = [784, 128, 1]
     gen_arch = [100, 128, 784]
     network = gan(dis_arch, gen_arch, 10)
 
+    saver = tf.train.Saver()
+
     print("Reading input data...")
     mnist = input_data.read_data_sets('../../MNIST_data', one_hot=True)
 
     session = tf.Session()
-    session.run(tf.global_variables_initializer())
+    if os.path.exists(model_path + ".meta"):
+        print("Restoring model....")
+        saver.restore(session, model_path)
+    else:
+        session.run(tf.global_variables_initializer())
 
-    print("Checking out directory...")
-    if not os.path.exists('out/'):
-        os.makedirs('out/')
+        print("Starting run...")
+        i = 0
+        for it in range(500000):
 
-    print("Starting run...")
-    i = 0
-    for it in range(500000):
+            X_mb, digits = mnist.train.next_batch(128)
+            _sample = sample_Z(128, 100)
+            _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: X_mb, network.generator_input: _sample, network.generator_condition: digits})
+            _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: digits})
 
-        X_mb, digits = mnist.train.next_batch(128)
-        _sample = sample_Z(128, 100)
-        _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: X_mb, network.generator_input: _sample, network.generator_condition: digits})
-        _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: digits})
+            if it % 1000 == 0:
+                print('Iter: {}'.format(it))
+                print('D loss: {:.4}'. format(D_loss_curr))
+                print('G_loss: {:.4}'.format(G_loss_curr))
+                print()
+        
+        print("Saving model to {}".format(location))
+        saver.save(session, model_path)
 
-        if it % 1000 == 0:
-            print('Iter: {}'.format(it))
-            print('D loss: {:.4}'. format(D_loss_curr))
-            print('G_loss: {:.4}'.format(G_loss_curr))
-            print()
-    
+
     while True:
         val = int(input("Input a number 0-9 to generate: "))
         val = get_one_hot(val)
@@ -80,4 +101,4 @@ def main():
         fig.show()
 
 if __name__ == '__main__':
-    main()
+    main(args)

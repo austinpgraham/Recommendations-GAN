@@ -21,5 +21,10 @@ setup(name='ganrecs',
           'console_scripts': [
               'ganrecs_mnist_test=ganrecs.scripts.ganrecs_mnist:main'
           ]
-      }
+      },
+      install_requires=[
+          'tensorflow',
+          'numpy',
+          'matplotlib'
+      ]
 )
