@@ -19,12 +19,14 @@ setup(name='ganrecs',
       package_dir={'': 'src'},
       entry_points = {
           'console_scripts': [
-              'ganrecs_mnist_test=ganrecs.scripts.ganrecs_mnist:main'
+              'ganrecs_mnist_test=ganrecs.scripts.ganrecs_mnist:main',
+              'svd_test=ganrecs.scripts.surprise_recs:main'
           ]
       },
       install_requires=[
           'tensorflow',
           'numpy',
-          'matplotlib'
+          'matplotlib',
+          'surprise'
       ]
 )
