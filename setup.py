@@ -20,7 +20,8 @@ setup(name='ganrecs',
       entry_points = {
           'console_scripts': [
               'ganrecs_mnist_test=ganrecs.scripts.ganrecs_mnist:main',
-              'svd_test=ganrecs.scripts.surprise_recs:main'
+              'svd_test=ganrecs.scripts.surprise_recs:main',
+              'run_ml_recs=ganrecs.scripts.gan_movielens:main'
           ]
       },
       install_requires=[

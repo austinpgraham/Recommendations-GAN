@@ -16,12 +16,14 @@ class Discriminator():
         past = input_real
         for i in range(len(self._layers) - 1):
             inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
+            past = inter
         self.logit_real = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
         self.prob_real = tf.nn.sigmoid(self.logit_real)
     
         past = input_fake
         for i in range(len(self._layers) - 1):
             inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
+            past = inter
         self.logit_fake = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
         self.prob_fake = tf.nn.sigmoid(self.logit_fake)
 

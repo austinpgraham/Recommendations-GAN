@@ -16,6 +16,7 @@ class Generator():
         past = _input
         for i in range(len(self._layers) - 1):
             inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
+            past = inter
         self.logit = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
         self.prob = tf.nn.sigmoid(self.logit)
 
