@@ -15,6 +15,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 MOVIES_COUNT = 3706
 USER_COUNT = 6040
+TEST_PERCENT = .2
 
 def sample_Z(m, n):
     return np.random.uniform(-1., 1., size=[m, n])
@@ -26,6 +27,11 @@ def process_args(args=None):
     parser.add_argument('-n', '--noise', help="Amount of noise to include in network")
     parser.add_argument('-e', '--epochs', help="Number of epochs to run")
     args = parser.parse_args(args)
+
+    assert args.location, "Must provide output location"
+    assert args.noise, "Must provide noise"
+    assert args.epochs, "Must provide epochs"
+
     location = os.path.expanduser(args.location)
 
     if not os.path.exists(location):
@@ -42,23 +48,39 @@ def get_data():
         if user not in user_tuples.keys():
             user_tuples[user] = {int(r):0 for r in movies}
         user_tuples[user][int(movie)] = float(rating) / 5.
-    return user_tuples
+    test = {}
+    test_amount = int(USER_COUNT * TEST_PERCENT)
+    keys = list(user_tuples.keys())
+    for _ in range(test_amount):
+        idx = randint(0, len(keys) - 1)
+        usr = keys[idx]
+        while usr in test.keys():
+            idx = randint(0, len(keys) - 1)
+            usr = keys[idx]
+        test[usr] = user_tuples.pop(usr)
+    return user_tuples, test
 
 
 def get_sample(data, size):
-    indicies = [randint(1, USER_COUNT) for _ in range(size)]
-    result = [list(data[str(i)].values()) for i in indicies]
+    indices = [randint(1, USER_COUNT) for _ in range(size)]
+    used = []
+    result = []
+    for i in indices:
+        while str(i) not in data.keys() or i in used:
+            i = randint(1, USER_COUNT)
+        used.append(i)
+        result.append(list(data[str(i)].values()))
     return np.array(result)
 
 
 def main(args=None):
     location, noise, epochs = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
-    data = get_data()
+    data, test_data = get_data()
 
     print("Constructing network...")
     dis_arch = [MOVIES_COUNT, 2000, 1000, 1]
-    gen_arch = [noise, 1000, 2000, MOVIES_COUNT]
+    gen_arch = [noise, 3000, 2000, MOVIES_COUNT]
     network = gan(dis_arch, gen_arch, MOVIES_COUNT)
 
     saver = tf.train.Saver()
@@ -72,12 +94,12 @@ def main(args=None):
         print("Starting run...")
         i = 0
         for it in range(epochs):
-            users = get_sample(data, 20)
-            _sample = sample_Z(20, noise)
+            users = get_sample(data, 50)
+            _sample = sample_Z(50, noise)
             _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: users, network.generator_input: _sample, network.generator_condition: users})
             _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: users})
 
-            if it % 1000 == 0:
+            if it % 100 == 0:
                 print('Iter: {}'.format(it))
                 print('D loss: {:.4}'. format(D_loss_curr))
                 print('G_loss: {:.4}'.format(G_loss_curr))
