@@ -83,10 +83,8 @@ def main(args=None):
             _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: digits})
 
             if it % 1000 == 0:
-                print('Iter: {}'.format(it))
-                print('D loss: {:.4}'. format(D_loss_curr))
-                print('G_loss: {:.4}'.format(G_loss_curr))
-                print()
+                print('current_d_loss: {:.4}'.format(D_loss_curr))
+                print('current_g_loss: {:.4}'.format(G_loss_curr))
         
         print("Saving model to {}".format(location))
         saver.save(session, model_path)

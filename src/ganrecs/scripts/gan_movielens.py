@@ -10,6 +10,8 @@ from ganrecs.network import gan
 
 from surprise import Dataset
 
+import matplotlib.pyplot as plt
+
 old_v = tf.logging.get_verbosity()
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -73,6 +75,15 @@ def get_sample(data, size):
     return np.array(result)
 
 
+def plot_losses(epochs, d_losses, g_losses):
+    xs = [x for x in range(epochs)]
+    plt.title('D/G Losses Over Epochs')
+    plt.plot(xs, d_losses, label='Discriminator')
+    plt.plot(xs, g_losses, label='Generator')
+    plt.legend()
+    plt.show()
+
+
 def main(args=None):
     location, noise, epochs = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
@@ -84,7 +95,8 @@ def main(args=None):
     network = gan(dis_arch, gen_arch, MOVIES_COUNT)
 
     saver = tf.train.Saver()
-
+    d_losses = []
+    g_losses = []
     session = tf.Session()
     if os.path.exists(model_path + ".meta"):
         print("Restoring model....")
@@ -101,12 +113,15 @@ def main(args=None):
 
             if it % 100 == 0:
                 print('Iter: {}'.format(it))
-                print('D loss: {:.4}'. format(D_loss_curr))
+                print('D loss: {:.4}'.format(D_loss_curr))
                 print('G_loss: {:.4}'.format(G_loss_curr))
+                d_losses.append(D_loss_curr)
+                g_losses.append(G_loss_curr)
                 print()
-        
+
         print("Saving model to {}".format(location))
         saver.save(session, model_path)
+        plot_losses(int(epochs / 100), d_losses, g_losses)
 
 
 if __name__ == '__main__':
