@@ -77,33 +77,32 @@ def plot_losses(epochs, d_losses, g_losses):
 def main(args=None):
     location, noise, epochs = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
-    data = Dataset.load_builtin('ml-100k')
+    data = Dataset.load_builtin('ml-1m')
     rc = RatingCollection(data.raw_ratings)
 
     print("Constructing network...")
     dis_arch = [MOVIES_COUNT, 2000, 1000, 1]
     gen_arch = [noise, 3000, 2000, 3000, MOVIES_COUNT]
-    network = gan(dis_arch, gen_arch, MOVIES_COUNT)
 
-    saver = tf.train.Saver()
     d_losses = []
     g_losses = []
-    session = tf.Session()
     if os.path.exists(model_path + ".meta"):
         print("Restoring model....")
         saver.restore(session, model_path)
     else:
-        session.run(tf.global_variables_initializer())
         print("Starting run...")
         for i in range(len(rc.folds)):
             training_data = {}
             for idx, value in enumerate(rc.folds):
                 if idx != i:
                     training_data = {**training_data, **rc._get_matrix(value)}
+            tf.reset_default_graph()
+            network = gan(dis_arch, gen_arch, MOVIES_COUNT)
+            session = tf.Session()
+            session.run(tf.global_variables_initializer())
             for it in range(epochs):
                 users = get_sample(training_data, 50)
                 _sample = sample_Z(50, noise)
-                from pdb import set_trace; set_trace()
                 _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss],
                 feed_dict={network.discriminator_input: users, network.generator_input: _sample,
                 network.generator_condition: users})
@@ -119,6 +118,25 @@ def main(args=None):
                     d_losses.append(D_loss_curr)
                     g_losses.append(G_loss_curr)
                     print()
+
+            # Get the classification distances
+            test_fold = rc._get_matrix(rc.folds[i])
+            users = get_sample(test_fold, 50).astype(np.float32)
+            _sample = sample_Z(50, noise)
+            generated_images = session.run(network.generator.prob, feed_dict={network.generator_input: _sample,             
+            network.generator_condition: users})
+
+            # def classifier_fn(images):
+            #     from pdb import set_trace; set_trace()
+            #     act = session.run(network.discriminator.prob_real, feed_dict={network.discriminator_input: images,
+            #         network.generator_condition: users})
+            #     return act
+            feed_users = get_sample(test_fold, 50).astype(np.float32)
+            feed_users = tf.convert_to_tensor(feed_users, dtype=tf.float32)
+            generated_images = tf.convert_to_tensor(generated_images, dtype=tf.float32)
+            result = tf.contrib.gan.eval.frechet_classifier_distance_from_activations(feed_users, generated_images)
+            from pdb import set_trace; set_trace()
+            session.close()
 
         # print("Saving model to {}".format(location))
         # saver.save(session, model_path)
