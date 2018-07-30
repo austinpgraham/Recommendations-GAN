@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 
 from random import randint
 
+from ganrecs.data import RatingCollection
+
 from ganrecs.network import gan
 
 from surprise import Dataset
@@ -20,6 +22,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 MOVIES_COUNT = 3706
 USER_COUNT = 6040
 TEST_PERCENT = .2
+
 
 def sample_Z(m, n):
     return np.random.normal(-1., 1., size=[m, n])
@@ -50,28 +53,6 @@ def process_args(args=None):
     return location, int(args.noise), int(args.epochs)
 
 
-def get_data():
-    data = Dataset.load_builtin('ml-1m')
-    user_tuples = {}
-    from pdb import set_trace; set_trace()
-    movies = set([r[1] for r in data.raw_ratings])
-    for user, movie, rating, _ in data.raw_ratings:
-        if user not in user_tuples.keys():
-            user_tuples[user] = {int(r):0 for r in movies}
-        user_tuples[user][int(movie)] = float(rating) / 5.
-    test = {}
-    test_amount = int(USER_COUNT * TEST_PERCENT)
-    keys = list(user_tuples.keys())
-    for _ in range(test_amount):
-        idx = randint(0, len(keys) - 1)
-        usr = keys[idx]
-        while usr in test.keys():
-            idx = randint(0, len(keys) - 1)
-            usr = keys[idx]
-        test[usr] = user_tuples.pop(usr)
-    return user_tuples, test
-
-
 def get_sample(data, size):
     indices = [randint(1, USER_COUNT) for _ in range(size)]
     used = []
@@ -96,7 +77,9 @@ def plot_losses(epochs, d_losses, g_losses):
 def main(args=None):
     location, noise, epochs = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
-    data, test_data = get_data()
+    data = Dataset.load_builtin('ml-100k')
+    rc = RatingCollection(data.raw_ratings)
+    from pdb import set_trace; set_trace()
 
     print("Constructing network...")
     dis_arch = [MOVIES_COUNT, 2000, 1000, 1]
