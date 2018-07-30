@@ -18,7 +18,7 @@ class Generator():
             inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
             past = inter
         self.logit = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
-        self.prob = tf.nn.sigmoid(self.logit)
+        self.prob = tf.nn.tanh(self.logit)
 
     def _construct(self, arch):
         layers = []
