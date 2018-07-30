@@ -43,10 +43,11 @@ class RatingCollection():
 
     def _get_matrix(self, ratings):
         user_tuples = {}
-        movies = set([r.item for r in ratings])
+        movies = set([r.item for r in self.ratings])
+        from pdb import set_trace; set_trace()
         for rating in ratings:
             if rating.user not in user_tuples.keys():
-                user_tuples[user] = {int(r):0 for r in movies}
+                user_tuples[rating.user] = {int(r):0 for r in movies}
         return user_tuples
 
     def __iter__(self):

@@ -79,7 +79,6 @@ def main(args=None):
     model_path = os.path.join(location, "model.ckpt")
     data = Dataset.load_builtin('ml-100k')
     rc = RatingCollection(data.raw_ratings)
-    from pdb import set_trace; set_trace()
 
     print("Constructing network...")
     dis_arch = [MOVIES_COUNT, 2000, 1000, 1]
@@ -96,26 +95,55 @@ def main(args=None):
     else:
         session.run(tf.global_variables_initializer())
         print("Starting run...")
-        i = 0
-        for it in range(epochs):
-            users = get_sample(data, 50)
-            _sample = sample_Z(50, noise)
-            _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: users, network.generator_input: _sample, network.generator_condition: users})
-            _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: users})
+        for i in range(len(rc.folds)):
+            training_data = {}
+            for idx, value in enumerate(rc.folds):
+                if idx != i:
+                    training_data = {**training_data, **rc._get_matrix(value)}
+            for it in range(epochs):
+                users = get_sample(training_data, 50)
+                _sample = sample_Z(50, noise)
+                from pdb import set_trace; set_trace()
+                _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss],
+                feed_dict={network.discriminator_input: users, network.generator_input: _sample,
+                network.generator_condition: users})
+                _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss],
+                feed_dict={network.generator_input: _sample, network.generator_condition: users})
 
-            if it % 100 == 0:
-                d_losses.append(D_loss_curr)
-                g_losses.append(G_loss_curr)
-                print('Iter: {}'.format(it))
-                print('D loss: {:.4}'.format(D_loss_curr))
-                print('G_loss: {:.4}'.format(G_loss_curr))
-                d_losses.append(D_loss_curr)
-                g_losses.append(G_loss_curr)
-                print()
+                if it % 100 == 0:
+                    d_losses.append(D_loss_curr)
+                    g_losses.append(G_loss_curr)
+                    print('Iter: {}'.format(it))
+                    print('D loss: {:.4}'.format(D_loss_curr))
+                    print('G_loss: {:.4}'.format(G_loss_curr))
+                    d_losses.append(D_loss_curr)
+                    g_losses.append(G_loss_curr)
+                    print()
 
-        print("Saving model to {}".format(location))
-        saver.save(session, model_path)
-        plot_losses(int(epochs / 100), d_losses, g_losses)
+        # print("Saving model to {}".format(location))
+        # saver.save(session, model_path)
+        # plot_losses(int(epochs / 100), d_losses, g_losses)
+
+        # i = 0
+        # for it in range(epochs):
+        #     users = get_sample(data, 50)
+        #     _sample = sample_Z(50, noise)
+        #     _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: users, network.generator_input: _sample, network.generator_condition: users})
+        #     _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: users})
+
+        #     if it % 100 == 0:
+        #         d_losses.append(D_loss_curr)
+        #         g_losses.append(G_loss_curr)
+        #         print('Iter: {}'.format(it))
+        #         print('D loss: {:.4}'.format(D_loss_curr))
+        #         print('G_loss: {:.4}'.format(G_loss_curr))
+        #         d_losses.append(D_loss_curr)
+        #         g_losses.append(G_loss_curr)
+        #         print()
+
+        # print("Saving model to {}".format(location))
+        # saver.save(session, model_path)
+        # plot_losses(int(epochs / 100), d_losses, g_losses)
 
 
 if __name__ == '__main__':
