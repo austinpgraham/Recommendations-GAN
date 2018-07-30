@@ -53,6 +53,7 @@ def process_args(args=None):
 def get_data():
     data = Dataset.load_builtin('ml-1m')
     user_tuples = {}
+    from pdb import set_trace; set_trace()
     movies = set([r[1] for r in data.raw_ratings])
     for user, movie, rating, _ in data.raw_ratings:
         if user not in user_tuples.keys():
