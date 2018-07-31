@@ -7,6 +7,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from random import randint
+from random import sample
+
+from ganrecs.data import RatingCollection
 
 from ganrecs.network import gan
 
@@ -20,6 +23,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 MOVIES_COUNT = 3706
 USER_COUNT = 6040
 TEST_PERCENT = .2
+
 
 def sample_Z(m, n):
     return np.random.normal(-1., 1., size=[m, n])
@@ -50,35 +54,11 @@ def process_args(args=None):
     return location, int(args.noise), int(args.epochs)
 
 
-def get_data():
-    data = Dataset.load_builtin('ml-1m')
-    user_tuples = {}
-    movies = set([r[1] for r in data.raw_ratings])
-    for user, movie, rating, _ in data.raw_ratings:
-        if user not in user_tuples.keys():
-            user_tuples[user] = {int(r):0 for r in movies}
-        user_tuples[user][int(movie)] = float(rating) / 5.
-    test = {}
-    test_amount = int(USER_COUNT * TEST_PERCENT)
-    keys = list(user_tuples.keys())
-    for _ in range(test_amount):
-        idx = randint(0, len(keys) - 1)
-        usr = keys[idx]
-        while usr in test.keys():
-            idx = randint(0, len(keys) - 1)
-            usr = keys[idx]
-        test[usr] = user_tuples.pop(usr)
-    return user_tuples, test
-
-
 def get_sample(data, size):
-    indices = [randint(1, USER_COUNT) for _ in range(size)]
-    used = []
+    user_keys = list(data.keys())
+    indices = sample(user_keys, size)
     result = []
     for i in indices:
-        while str(i) not in data.keys() or i in used:
-            i = randint(1, USER_COUNT)
-        used.append(i)
         result.append(list(data[str(i)].values()))
     return np.array(result)
 
@@ -95,43 +75,70 @@ def plot_losses(epochs, d_losses, g_losses):
 def main(args=None):
     location, noise, epochs = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
-    data, test_data = get_data()
+    data = Dataset.load_builtin('ml-1m')
+    rc = RatingCollection(data.raw_ratings)
 
     print("Constructing network...")
-    dis_arch = [MOVIES_COUNT, 2000, 1000, 1]
-    gen_arch = [noise, 3000, 2000, 3000, MOVIES_COUNT]
-    network = gan(dis_arch, gen_arch, MOVIES_COUNT)
 
-    saver = tf.train.Saver()
     d_losses = []
     g_losses = []
-    session = tf.Session()
     if os.path.exists(model_path + ".meta"):
         print("Restoring model....")
         saver.restore(session, model_path)
     else:
-        session.run(tf.global_variables_initializer())
         print("Starting run...")
-        i = 0
-        for it in range(epochs):
-            users = get_sample(data, 50)
-            _sample = sample_Z(50, noise)
-            _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: users, network.generator_input: _sample, network.generator_condition: users})
-            _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: users})
+        distances = []
+        for i in range(len(rc.folds)):
+            training_data = {}
+            for idx, value in enumerate(rc.folds):
+                if idx != i:
+                    training_data = {**training_data, **rc._get_matrix(value)}
+            dis_arch = [MOVIES_COUNT, 2000, 1000, 1]
+            gen_arch = [noise, 3000, 2000, 3000, MOVIES_COUNT]
+            tf.reset_default_graph()
+            network = gan(dis_arch, gen_arch, MOVIES_COUNT)
+            session = tf.Session()
+            session.run(tf.global_variables_initializer())
+            for it in range(epochs):
+                users = get_sample(training_data, 50)
+                _sample = sample_Z(50, noise)
+                _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss],
+                feed_dict={network.discriminator_input: users, network.generator_input: _sample,
+                network.generator_condition: users})
+                _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss],
+                feed_dict={network.generator_input: _sample, network.generator_condition: users})
 
-            if it % 100 == 0:
-                d_losses.append(D_loss_curr)
-                g_losses.append(G_loss_curr)
-                print('Iter: {}'.format(it))
-                print('D loss: {:.4}'.format(D_loss_curr))
-                print('G_loss: {:.4}'.format(G_loss_curr))
-                d_losses.append(D_loss_curr)
-                g_losses.append(G_loss_curr)
-                print()
+                if it % 100 == 0:
+                    d_losses.append(D_loss_curr)
+                    g_losses.append(G_loss_curr)
+                    print('Iter: {}'.format(it))
+                    print('D loss: {:.4}'.format(D_loss_curr))
+                    print('G_loss: {:.4}'.format(G_loss_curr))
+                    d_losses.append(D_loss_curr)
+                    g_losses.append(G_loss_curr)
+                    print()
 
-        print("Saving model to {}".format(location))
-        saver.save(session, model_path)
-        plot_losses(int(epochs / 100), d_losses, g_losses)
+            # Get the classification distances
+            test_fold = rc._get_matrix(rc.folds[i])
+            sample_size = len(test_fold)
+            users = get_sample(test_fold, sample_size).astype(np.float32)
+            _sample = sample_Z(sample_size, noise)
+            generated_images = session.run(network.generator.prob, feed_dict={network.generator_input: _sample,             
+            network.generator_condition: users})
+
+            feed_users = get_sample(test_fold, sample_size).astype(np.float32)
+            feed_users = tf.convert_to_tensor(feed_users, dtype=tf.float32)
+            generated_images = tf.convert_to_tensor(generated_images, dtype=tf.float32)
+            result = tf.contrib.gan.eval.frechet_classifier_distance_from_activations(feed_users, generated_images)
+            result = session.run(result)
+            distances.append(result)
+            session.close()
+        
+        xs = [x for x in range(len(rc.folds))]
+        plt.title('Distances of folds')
+        plt.plot(xs, distances, label='Frechet Classifier Distance')
+        plt.legend()
+        plt.show()
 
 
 if __name__ == '__main__':
