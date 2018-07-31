@@ -30,7 +30,6 @@ def gan(dis_arch, gen_arch, conditional):
     g = Generator(gen_arch, I)
     F = tf.concat(values=[g.prob, Y], axis=1)
     d = Discriminator(dis_arch, J, F)
-    print(d.logit_real)
     d_real_labels = tf.ones_like(d.logit_real)
     d_real_labels  = tf.random_uniform([50, int(d.logit_real.shape[1])], minval=0.7, maxval=1.2)
     d_fake_labels = tf.zeros_like(d.logit_fake)

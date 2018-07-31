@@ -47,6 +47,7 @@ class RatingCollection():
         for rating in ratings:
             if rating.user not in user_tuples.keys():
                 user_tuples[rating.user] = {int(r):0 for r in movies}
+            user_tuples[rating.user][int(rating.item)] = float(rating.rating) / 5.
         return user_tuples
 
     def __iter__(self):
