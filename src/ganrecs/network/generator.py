@@ -9,14 +9,15 @@ class Generator():
     an adversarial context
     """
 
-    def __init__(self, arch, _input):
+    def __init__(self, arch, _input, keep_prob):
         if len(arch) < 2:
             raise ValueError("Must provide architecture of at least one layer")
         self._layers = self._construct(arch)
         past = _input
         for i in range(len(self._layers) - 1):
-            inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
-            past = inter
+            inter = tf.nn.leaky_relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
+            dropout = tf.nn.dropout(inter, keep_prob)
+            past = dropout
         self.logit = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
         self.prob = tf.nn.tanh(self.logit)
 
