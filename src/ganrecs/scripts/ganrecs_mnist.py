@@ -52,6 +52,17 @@ def process_args(args=None):
 
     return location
 
+def plot_losses(epochs, d_losses, g_losses):
+    xs = [x for x in range(epochs)]
+    plt.title('D/G Losses Over Time')
+    plt.plot(xs, d_losses, label='Discriminator')
+    plt.plot(xs, g_losses, label='Generator')
+    plt.legend()
+    plt.show()
+
+def get_perturbed_batch(minibatch):
+    return minibatch + 0.5 * minibatch.std() * np.random.random(minibatch.shape)
+
 def main(args=None):
     location = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
@@ -59,13 +70,14 @@ def main(args=None):
     print("Constructing network...")
     dis_arch = [784, 128, 1]
     gen_arch = [100, 128, 784]
-    network = gan(dis_arch, gen_arch, 10)
+    network = gan(dis_arch, gen_arch, 10, 128)
 
     saver = tf.train.Saver()
 
     print("Reading input data...")
     mnist = input_data.read_data_sets('../../MNIST_data', one_hot=True)
-
+    d_losses = []
+    g_losses = []
     session = tf.Session()
     if os.path.exists(model_path + ".meta"):
         print("Restoring model....")
@@ -79,15 +91,17 @@ def main(args=None):
 
             X_mb, digits = mnist.train.next_batch(128)
             _sample = sample_Z(128, 100)
-            _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: X_mb, network.generator_input: _sample, network.generator_condition: digits})
+            X_p = get_perturbed_batch(X_mb)
+            _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss], feed_dict={network.discriminator_input: X_mb, network.pert: X_p, network.generator_input: _sample, network.generator_condition: digits})
             _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss], feed_dict={network.generator_input: _sample, network.generator_condition: digits})
 
             if it % 1000 == 0:
                 print('current_d_loss: {:.4}'.format(D_loss_curr))
                 print('current_g_loss: {:.4}'.format(G_loss_curr))
+                d_losses.append(D_loss_curr)
+                g_losses.append(G_loss_curr)
         
-        print("Saving model to {}".format(location))
-        saver.save(session, model_path)
+        plot_losses(500, d_losses, g_losses)
 
 
     while True:
