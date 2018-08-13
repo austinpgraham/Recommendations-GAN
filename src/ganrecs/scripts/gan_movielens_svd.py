@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import json
 import shutil
 import argparse
 import numpy as np
@@ -79,6 +80,13 @@ def plot_losses(epochs, d_losses, g_losses):
 def get_perturbed_batch(minibatch):
     return minibatch + 0.5 * minibatch.std() * np.random.random(minibatch.shape)
 
+def write_output(d_losses, g_losses, distances):
+    d_losses = [float(d) for d in d_losses]
+    g_losses = [float(g) for g in g_losses]
+    distances = [float(d) for d in distances]
+    _dict = {'d_losses': d_losses, 'g_losses': g_losses, 'distances': distances}
+    json.dump(_dict, open('out25000epochssvdnoreg.json', 'w'))
+
 def main(args=None):
     location, noise, epochs, pca_com = process_args(args)
     model_path = os.path.join(location, "model.ckpt")
@@ -99,8 +107,8 @@ def main(args=None):
             print("Fold {}...".format(i + 1))
             training_data = {}
             for idx, value in enumerate(rc.folds):
-                if idx != i:
-                    training_data = {**training_data, **rc._get_matrix(value)}
+                #if idx != i:
+                training_data = {**training_data, **rc._get_matrix(value)}
             print('Calculating principle components...')
             pca = PCA(pca_com)
             pca.fit(get_sample(training_data, len(training_data.keys())))
@@ -113,11 +121,14 @@ def main(args=None):
             for it in range(epochs):
                 users = get_sample(training_data, 50)
                 _sample = sample_Z(50, noise)
-                users_p = get_perturbed_batch(users)
+                # users_p = get_perturbed_batch(users)
                 users_pca = pca.transform(users)
+                # _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss],
+                # feed_dict={network.discriminator_input: users, network.generator_input: _sample,
+                # network.generator_condition: users_pca, network.pert: users_p, network.keep_prob: 0.5})
                 _, D_loss_curr = session.run([network.discriminator_optimizer, network.discriminator_loss],
                 feed_dict={network.discriminator_input: users, network.generator_input: _sample,
-                network.generator_condition: users_pca, network.pert: users_p, network.keep_prob: 0.5})
+                network.generator_condition: users_pca, network.keep_prob: 0.5})
                 _, G_loss_curr = session.run([network.generator_optimizer, network.generator_loss],
                 feed_dict={network.generator_input: _sample, network.generator_condition: users_pca,
                             network.keep_prob: 0.5})
@@ -142,12 +153,15 @@ def main(args=None):
                     result = session.run(result)
                     distances.append(result)
 
-            xs = [x for x in range(int(epochs/100))]
-            plt.title('Distances of folds')
-            plt.plot(xs, distances, label='Frechet Classifier Distance')
-            plt.legend()
-            plt.show()
+            # xs = [x for x in range(int(epochs/100))]
+            # plt.title('Distances of folds')
+            # plt.plot(xs, distances, label='Frechet Classifier Distance')
+            # plt.legend()
+            # plt.show()
             # plot_losses(int(epochs / 100), d_losses, g_losses)
+
+            write_output(d_losses, g_losses, distances)
+            break
 
             # Get the classification distances
         #     test_fold = rc._get_matrix(rc.folds[i])

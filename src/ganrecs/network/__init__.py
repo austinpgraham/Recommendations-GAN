@@ -26,16 +26,16 @@ def gan(dis_arch, gen_arch, conditional, batch_size):
     Y = tf.placeholder(tf.float32, shape=[None, conditional], name='conditional')
     X = tf.placeholder(tf.float32, shape=[None, dis_arch[0]])
     X = X + tf.random_normal(shape=tf.shape(X), mean=0., stddev=1., dtype=tf.float32)
-    X_p = tf.placeholder(tf.float32, shape=[None, dis_arch[0]])
+    # X_p = tf.placeholder(tf.float32, shape=[None, dis_arch[0]])
     keep_prob = tf.placeholder(tf.float32)
     I = tf.concat(values=[Z, Y], axis=1)
     J = tf.concat(values=[X, Y], axis=1)
-    J_p = tf.concat(values=[X_p, Y], axis=1)
+    # J_p = tf.concat(values=[X_p, Y], axis=1)
     gen_arch[0] += conditional
     dis_arch[0] += conditional
     g = Generator(gen_arch, I, keep_prob)
     F = tf.concat(values=[g.prob, Y], axis=1)
-    d = Discriminator(dis_arch, J, F, J_p)
+    d = Discriminator(dis_arch, J, F, None)
     d_real_labels = tf.ones_like(d.logit_real)
     #d_real_labels  = tf.random_uniform([batch_size, int(d.logit_real.shape[1])], minval=0.7, maxval=1.2)
     d_fake_labels = tf.zeros_like(d.logit_fake)
@@ -46,15 +46,15 @@ def gan(dis_arch, gen_arch, conditional, batch_size):
     g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d.logit_fake, labels=tf.ones_like(d.logit_fake)))    
 
     # Apply gradient penalty as here: https://github.com/kodalinaveen3/DRAGAN/blob/master/DRAGAN.ipynb
-    lambd = 10
-    alpha = tf.random_uniform([batch_size, 1], minval=0., maxval=1.)
-    differences = J_p - J
-    interpolates = J + (alpha*differences)
-    gradients = tf.gradients(d._build_dis(interpolates), [interpolates])[0]
-    slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
-    gradient_penalty = tf.reduce_mean((slopes-1.)**2)
-    d_total_loss += lambd*gradient_penalty
+    # lambd = 10
+    # alpha = tf.random_uniform([batch_size, 1], minval=0., maxval=1.)
+    # differences = J_p - J
+    # interpolates = J + (alpha*differences)
+    # gradients = tf.gradients(d._build_dis(interpolates), [interpolates])[0]
+    # slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
+    # gradient_penalty = tf.reduce_mean((slopes-1.)**2)
+    # d_total_loss += lambd*gradient_penalty
 
     d_opt = tf.train.AdamOptimizer(learning_rate=1e-4, beta1=0.5, beta2=0.9).minimize(d_total_loss, var_list=d.get_var_list())
     g_opt = tf.train.AdamOptimizer(learning_rate=1e-4, beta1=0.5, beta2=0.9).minimize(g_loss, var_list=g.get_var_list())
-    return GAN(X, d_opt, d, d_total_loss, Z, Y, g_opt, g, g_loss, keep_prob, X_p)
+    return GAN(X, d_opt, d, d_total_loss, Z, Y, g_opt, g, g_loss, keep_prob, None)
