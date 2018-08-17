@@ -27,8 +27,7 @@ setup(name='ganrecs',
       },
       install_requires=[
           'tensorflow',
-          'numpy',
-          'matplotlib',
-          'surprise'
+          'surprise',
+          'sklearn'
       ]
 )

@@ -26,6 +26,31 @@ def gan(dis_arch, gen_arch, conditional, batch_size):
     Y = tf.placeholder(tf.float32, shape=[None, conditional], name='conditional')
     X = tf.placeholder(tf.float32, shape=[None, dis_arch[0]])
     X = X + tf.random_normal(shape=tf.shape(X), mean=0., stddev=1., dtype=tf.float32)
+    keep_prob = tf.placeholder(tf.float32)
+    I = tf.concat(values=[Z, Y], axis=1)
+    J = tf.concat(values=[X, Y], axis=1)
+    gen_arch[0] += conditional
+    dis_arch[0] += conditional
+    g = Generator(gen_arch, I, keep_prob)
+    F = tf.concat(values=[g.prob, Y], axis=1)
+    d = Discriminator(dis_arch, J, F, None)
+    d_real_labels = tf.ones_like(d.logit_real)
+    d_fake_labels = tf.zeros_like(d.logit_fake)
+    d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d.logit_real, labels=d_real_labels))
+    d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d.logit_fake, labels=d_fake_labels))
+    d_total_loss = d_loss_real + d_loss_fake
+    g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d.logit_fake, labels=tf.ones_like(d.logit_fake)))    
+
+    d_opt = tf.train.AdamOptimizer(learning_rate=1e-4, beta1=0.5, beta2=0.9).minimize(d_total_loss, var_list=d.get_var_list())
+    g_opt = tf.train.AdamOptimizer(learning_rate=1e-4, beta1=0.5, beta2=0.9).minimize(g_loss, var_list=g.get_var_list())
+    return GAN(X, d_opt, d, d_total_loss, Z, Y, g_opt, g, g_loss, keep_prob, None)
+
+
+def dragan(dis_arch, gen_arch, conditional, batch_size):
+    Z = tf.placeholder(tf.float32, shape=[None, gen_arch[0]], name='noise')
+    Y = tf.placeholder(tf.float32, shape=[None, conditional], name='conditional')
+    X = tf.placeholder(tf.float32, shape=[None, dis_arch[0]])
+    X = X + tf.random_normal(shape=tf.shape(X), mean=0., stddev=1., dtype=tf.float32)
     X_p = tf.placeholder(tf.float32, shape=[None, dis_arch[0]])
     keep_prob = tf.placeholder(tf.float32)
     I = tf.concat(values=[Z, Y], axis=1)
@@ -37,9 +62,7 @@ def gan(dis_arch, gen_arch, conditional, batch_size):
     F = tf.concat(values=[g.prob, Y], axis=1)
     d = Discriminator(dis_arch, J, F, J_p)
     d_real_labels = tf.ones_like(d.logit_real)
-    #d_real_labels  = tf.random_uniform([batch_size, int(d.logit_real.shape[1])], minval=0.7, maxval=1.2)
     d_fake_labels = tf.zeros_like(d.logit_fake)
-    #d_fake_labels = tf.random_uniform([batch_size, int(d.logit_fake.shape[1])], minval=0.0, maxval=0.3)
     d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d.logit_real, labels=d_real_labels))
     d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d.logit_fake, labels=d_fake_labels))
     d_total_loss = d_loss_real + d_loss_fake

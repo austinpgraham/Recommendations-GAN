@@ -25,12 +25,12 @@ class Discriminator():
             past = inter
         self.logit_fake = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
         self.prob_fake = tf.nn.sigmoid(self.logit_fake)
-        past = input_real_p
-        for i in range(len(self._layers) - 1):
-            inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
-            past = inter
-        self.logit_real_p = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
-        self.prob_real_p = tf.nn.sigmoid(self.logit_real_p)
+        # past = input_real_p
+        # for i in range(len(self._layers) - 1):
+        #     inter = tf.nn.relu(tf.matmul(past, self._layers[i].W) + self._layers[i].b)
+        #     past = inter
+        # self.logit_real_p = tf.matmul(inter, self._layers[-1].W) + self._layers[-1].b
+        # self.prob_real_p = tf.nn.sigmoid(self.logit_real_p)
 
     def _construct(self, arch):
         layers = []
