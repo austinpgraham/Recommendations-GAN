@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import json
+
+import numpy as np
+
 from random import sample
 from random import shuffle
 
@@ -16,30 +20,20 @@ class RatingCollection():
 
     SAMPLE_AMOUNT = 0.2
     FOLDS = 10
+    FILE = "__tmp__.csv"
 
     def __init__(self, data_collection):
-        sample_size = int(len(data_collection) * self.SAMPLE_AMOUNT)
-        # _sample = sample(data_collection, sample_size)
-        # data_collection = [x for x in data_collection if x not in _sample]
-        _sample = []
-        self.dropouts = [Rating(i) for i in _sample]
         self.ratings = [Rating(i) for i in data_collection]
-        self._get_cv()
-
-    def all_ratings(self):
-        return self.dropouts + self.ratings
-
-    def _get_cv(self):
-        _size = len(self.ratings)
-        shuffle(self.ratings)
-        _cv_size = int(_size / self.FOLDS)
-        self.folds = []
-        marker = 0
-        for i in range(self.FOLDS):
-            self.folds.append(self.ratings[marker:marker+_cv_size])
-            marker = marker + _cv_size
-        if _size * self.FOLDS < len(self.ratings):
-            self.folds[-1] = self.folds[-1] + self.ratings[-1:-1 - (len(self.ratings) - _cv_size * self.FOLDS)]
+        large_matrix = self._get_matrix(self.ratings)
+        self.keys = []
+        self.item_keys = None
+        with open(self.FILE, 'w') as fp:
+            for k, v in large_matrix.items():
+                self.keys.append(k)
+                if self.item_keys is None:
+                    self.item_keys = list(v.keys())
+                fp.write("{}\n".format(",".join([str(x) for x in v.values()])))
+        del self.ratings
 
     def _get_matrix(self, ratings):
         user_tuples = {}
@@ -50,6 +44,11 @@ class RatingCollection():
             user_tuples[rating.user][int(rating.item)] = float(rating.rating) / 5.
         return user_tuples
 
-    def __iter__(self):
-        for fold in self.folds:
-            yield self._get_matrix(fold)
+    def get_sample(self, size):
+        indices = sample(list(range(len(self.keys))), size)
+        _sample = []
+        with open(self.FILE, 'r') as fp:
+            for i, line in enumerate(fp):
+                if i in indices:
+                    _sample.append([float(x) for x in line.split(',')])
+        return np.array(_sample)
