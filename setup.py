@@ -17,17 +17,20 @@ setup(name='ganrecs',
       url='https://github.com/austinpgraham/Recommendations-GAN',
       packages=find_packages('src'),
       package_dir={'': 'src'},
+      include_package_data=True,
       entry_points = {
           'console_scripts': [
               'ganrecs_mnist_test=ganrecs.scripts.ganrecs_mnist:main',
               'run_surprise_exp=ganrecs.scripts.surprise_recs:main',
               'run_ml_recs=ganrecs.scripts.gan_movielens:main',
-              'run_ml_recs_with_svd=ganrecs.scripts.gan_movielens_svd:main'
+              'run_ml_recs_with_svd=ganrecs.scripts.gan_movielens_svd:main',
+              'run_yahoo_recs_with_svd=ganrecs.scripts.gan_yahoo_svd:main'
           ]
       },
       install_requires=[
           'tensorflow',
           'surprise',
-          'sklearn'
+          'sklearn',
+          'google-cloud-storage'
       ]
 )

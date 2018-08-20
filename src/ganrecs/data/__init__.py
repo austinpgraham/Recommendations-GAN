@@ -22,27 +22,26 @@ class RatingCollection():
     FOLDS = 10
     FILE = "__tmp__.csv"
 
-    def __init__(self, data_collection):
-        self.ratings = [Rating(i) for i in data_collection]
-        large_matrix = self._get_matrix(self.ratings)
+    def __init__(self, _file, sep=',', _max=5.):
         self.keys = []
-        self.item_keys = None
-        with open(self.FILE, 'w') as fp:
-            for k, v in large_matrix.items():
-                self.keys.append(k)
-                if self.item_keys is None:
-                    self.item_keys = list(v.keys())
-                fp.write("{}\n".format(",".join([str(x) for x in v.values()])))
-        del self.ratings
+        user_items = []
+        start = None
+        with open(_file, 'r') as fp:
+            line = fp.readline()
+            while line:
+                user, item, rating = line.split(sep)
+                if start is None:
+                    start = user
+                if user not in self.keys:
+                    self.keys.append(user)
+                if start != user:
+                    with open(self.FILE, 'a') as sfp:
+                        sfp.write(",".join(user_items))
+                        user_items = []
+                        start = user
+                user_items.append(str(float(rating) / _max))
+                line = fp.readline()
 
-    def _get_matrix(self, ratings):
-        user_tuples = {}
-        movies = set([r.item for r in self.ratings])
-        for rating in ratings:
-            if rating.user not in user_tuples.keys():
-                user_tuples[rating.user] = {int(r):0 for r in movies}
-            user_tuples[rating.user][int(rating.item)] = float(rating.rating) / 5.
-        return user_tuples
 
     def get_sample(self, size):
         indices = sample(list(range(len(self.keys))), size)

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import os
+import sys
 import json
 import shutil
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 
 from random import randint
 from random import sample
@@ -40,22 +40,13 @@ def process_args(args=None):
     parser.add_argument('-e', '--epochs', help="Number of epochs to run")
     parser.add_argument('-f', '--file', help="Output file name")
     parser.add_argument('-p', '--pca', help="Number of latent SVD features.")
-    args = parser.parse_args(args)
+    args, _ = parser.parse_known_args(args)
 
     assert args.file, "Must provide output file"
     assert args.noise, "Must provide noise"
     epochs = DEFAULT_EPOCHS if args.epochs is None else int(args.epochs)
 
     return args.file, int(args.noise), epochs, int(args.pca)
-
-
-def plot_losses(epochs, d_losses, g_losses):
-    xs = [x for x in range(epochs)]
-    plt.title('D/G Losses Over Time')
-    plt.plot(xs, d_losses, label='Discriminator')
-    plt.plot(xs, g_losses, label='Generator')
-    plt.legend()
-    plt.show()
 
 def get_perturbed_batch(minibatch):
     return minibatch + 0.5 * minibatch.std() * np.random.random(minibatch.shape)
@@ -133,5 +124,5 @@ def main(args=None):
 
 
 if __name__ == '__main__':
-    main(args)
+    main(sys.argv)
     os.remove("__tmp__.csv")
